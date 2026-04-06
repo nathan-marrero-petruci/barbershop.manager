@@ -1,0 +1,40 @@
+# ── .NET build artifacts ──────────────────────
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# ── Banco de dados SQLite ─────────────────────
+*.db
+*.db-wal
+*.db-shm
+
+# ── Segredos e configuração sensível ──────────
+appsettings.Development.json
+.env
+.env.*
+!.env.example
+
+# Não commitar user secrets locais
+secrets.json
+
+# Cookies de sessão locais
+cookies.txt
+
+# ── Frontend ──────────────────────────────────
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/*.local
+
+# ── Logs ──────────────────────────────────────
+*.log
+logs/
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Ferramentas de desenvolvimento ────────────
+probe_openapi/
