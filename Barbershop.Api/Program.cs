@@ -23,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite("Data Source=barbershop.db;Mode=ReadWriteCreate;Cache=Shared",
         sqlite => sqlite.CommandTimeout(30))
-    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution));
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -525,7 +525,7 @@ admin.MapPost("/logout", (HttpContext ctx) =>
 });
 
 /* ---------------- Barbers CRUD ---------------- */
-admin.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.ToListAsync());
+admin.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.AsNoTracking().ToListAsync());
 
 admin.MapPost("/barbers", async (Barber b, AppDbContext db) =>
 {
