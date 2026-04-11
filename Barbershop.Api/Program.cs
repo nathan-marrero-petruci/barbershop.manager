@@ -21,9 +21,8 @@ using Microsoft.AspNetCore.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlite("Data Source=barbershop.db;Mode=ReadWriteCreate;Cache=Shared",
-        sqlite => sqlite.CommandTimeout(30))
-    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+    opt.UseSqlite("Data Source=barbershop.db;Mode=ReadWriteCreate;Pooling=False",
+        sqlite => sqlite.CommandTimeout(30)));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
