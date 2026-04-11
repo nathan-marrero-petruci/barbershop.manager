@@ -495,7 +495,7 @@ app.MapPost("/admin/login", async (LoginDto dto, AppDbContext db, HttpContext ct
     ctx.Response.Cookies.Append("admin_token", tokenString, new CookieOptions
     {
         HttpOnly = true,
-        Secure   = !app.Environment.IsDevelopment(),
+        Secure   = true,
         SameSite = SameSiteMode.Strict,
         Expires  = expires,
         Path     = "/"
