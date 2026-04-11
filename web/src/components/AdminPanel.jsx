@@ -778,7 +778,8 @@ export default function AdminPanel() {
     const res = await apiFetch("/admin/appointments");
     if (res && res.ok) {
       const data = await res.json();
-      setPendingCount(data.filter(a => a.status === 'Pending').length);
+      const items = Array.isArray(data) ? data : (data.items ?? []);
+      setPendingCount(items.filter(a => a.status === 'Pending').length);
     }
   }
 
