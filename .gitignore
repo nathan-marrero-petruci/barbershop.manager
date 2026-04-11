@@ -1,6 +1,7 @@
 # ── .NET build artifacts ──────────────────────
 [Bb]in/
 [Oo]bj/
+publish/
 *.user
 *.suo
 .vs/
