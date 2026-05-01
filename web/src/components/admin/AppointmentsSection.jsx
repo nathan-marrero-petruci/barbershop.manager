@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { apiFetch } from "../../api/client.js";
+import { formatDateBR, formatTimeBR } from '../../utils/date.js';
 
 const STATUS_LABEL  = { Pending: 'Aguardando Pgto.', Confirmed: 'Confirmado', Cancelled: 'Cancelado', Done: 'Concluído' };
 const STATUS_CLASS  = { Pending: 'badge-pending', Confirmed: 'badge-scheduled', Cancelled: 'badge-cancelled', Done: 'badge-done' };
@@ -74,8 +75,8 @@ export default function AppointmentsSection() {
     await load(page);
   }
 
-  const fmtHour = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const fmtDate = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtHour = (iso) => formatTimeBR(iso);
+  const fmtDate = (iso) => formatDateBR(iso);
 
   return (
     <div className="admin-section-card">

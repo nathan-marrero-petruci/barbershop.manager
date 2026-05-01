@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { API } from '../api/client.js'
+import { formatDateTimeBR } from '../utils/date.js'
 
 const STATUS_LABEL = {
   Pending:   { label: 'Aguardando pagamento', color: '#f59e0b' },
@@ -10,10 +11,6 @@ const STATUS_LABEL = {
   Completed: { label: 'Concluído',            color: '#6b7280' },
 }
 
-function formatDate(iso) {
-  const d = new Date(iso)
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 export default function MyAppointment() {
   const [params] = useSearchParams()
@@ -109,7 +106,7 @@ export default function MyAppointment() {
                   ['Cliente',    appt.customerName],
                   ['Barbeiro',   appt.barberName],
                   ['Serviço',    appt.serviceName],
-                  ['Horário',    formatDate(appt.start)],
+                  ['Horário',    formatDateTimeBR(appt.start)],
                   ...(appt.addons?.length ? [['Adicionais', appt.addons.join(', ')]] : []),
                 ].map(([label, value]) => (
                   <tr key={label} style={{ borderBottom: '1px solid var(--border)' }}>

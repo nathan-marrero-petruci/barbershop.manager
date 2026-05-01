@@ -1,3 +1,4 @@
+import { formatTimeBR } from '../utils/date.js';
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { API } from "../api/client.js";
@@ -246,7 +247,7 @@ export default function BookingForm({ onBooked }) {
               Horário disponível
               {form.slot && (
                 <span style={{ color: 'var(--gold)', marginLeft: 8, fontSize: '0.75rem' }}>
-                  ✓ {new Date(form.slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  ✓ {formatTimeBR(form.slot)}
                 </span>
               )}
             </label>
@@ -263,7 +264,7 @@ export default function BookingForm({ onBooked }) {
                     className={`slot-btn${form.slot === slot ? ' selected' : ''}`}
                     onClick={() => setForm(f => ({ ...f, slot }))}
                   >
-                    {new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatTimeBR(slot)}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client.js";
+import { formatDateBR, formatTimeBR } from '../utils/date.js';
 import BarbersSection      from "./admin/BarbersSection.jsx";
 import ServicesSection     from "./admin/ServicesSection.jsx";
 import WorkingHoursSection from "./admin/WorkingHoursSection.jsx";
@@ -592,8 +593,8 @@ function AppointmentsSection() {
     await load();
   }
 
-  const fmtHour = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const fmtDate = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtHour = (iso) => formatTimeBR(iso);
+  const fmtDate = (iso) => formatDateBR(iso);
   const getDateStr = (iso) => new Date(iso).toLocaleDateString('sv');
   const todayStr    = new Date().toLocaleDateString('sv');
   const tomorrowStr = new Date(Date.now() + 86400000).toLocaleDateString('sv');
