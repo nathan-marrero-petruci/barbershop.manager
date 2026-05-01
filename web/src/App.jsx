@@ -1,6 +1,6 @@
 import './App.css'
 import { useEffect, useState } from 'react'
-import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import BookingForm from './components/BookingForm.jsx'
 import AdminLogin from './components/AdminLogin.jsx'
 import AdminPanel from './components/AdminPanel.jsx'
@@ -10,6 +10,7 @@ import { API } from './api/client.js'
 function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     fetch(`${API}/admin/me`, { credentials: 'include' })
@@ -26,6 +27,7 @@ function App() {
 
   const navCls = ({ isActive }) => `nav-tab${isActive ? ' active' : ''}`
 
+  const isMyAppointmentPage = location.pathname.startsWith('/meu-agendamento')
   return (
     <>
       <header className="app-header">
@@ -38,13 +40,17 @@ function App() {
             <span className="app-brand-sub">Barbearia</span>
           </div>
         </div>
-        <nav className="app-nav">
-          <NavLink to="/" className={navCls} end>Agendar</NavLink>
-          <NavLink to="/admin" className={navCls}>Admin</NavLink>
-          {isAdminAuthenticated && (
-            <button className="btn-danger" onClick={handleLogout}>Sair</button>
-          )}
-        </nav>
+        {!isMyAppointmentPage && (
+          <nav className="app-nav">
+            <NavLink to="/" className={navCls} end>Agendar</NavLink>
+            {isAdminAuthenticated && (
+              <>
+                <NavLink to="/admin" className={navCls}>Admin</NavLink>
+                <button className="btn-danger" onClick={handleLogout}>Sair</button>
+              </>
+            )}
+          </nav>
+        )}
       </header>
 
       <main className="app-content">
