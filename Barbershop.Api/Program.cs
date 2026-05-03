@@ -815,8 +815,8 @@ admin.MapPatch("/appointments/{id}/status", async (int id, StatusDto dto, AppDbC
     appt.Status = dto.Status;
     await db.SaveChangesAsync();
 
-    // Send WhatsApp to client when barber confirms payment received
-    if (dto.Status == "Confirmed")
+    // Envia WhatsApp para o cliente quando o status for alterado pelo admin
+    if (dto.Status == "Confirmed" || dto.Status == "Cancelled" || dto.Status == "Done")
     {
         var settings = await db.AppSettings.ToListAsync();
         string GetS(string key) => settings.FirstOrDefault(s => s.Key == key)?.Value ?? "";
@@ -829,11 +829,31 @@ admin.MapPatch("/appointments/{id}/status", async (int id, StatusDto dto, AppDbC
             if (customer != null)
             {
                 var localTime = appt.Start.ToLocalTime();
-                var msg = $"Olá {customer.Name}! 👋\n"
+                string msg = "";
+                if (dto.Status == "Confirmed")
+                {
+                    msg = $"Olá {customer.Name}! 👋\n"
                         + $"✅ Seu pagamento foi recebido e seu agendamento na *Barbearia Espaço Vip* está *confirmado*!\n\n"
                         + $"✂️ Serviço: {service?.Name ?? "serviço"}\n"
                         + $"🕐 Horário: {localTime:HH:mm} – {localTime:dd/MM/yyyy}\n\n"
                         + "Te esperamos! Em caso de dúvidas ou cancelamento, entre em contato com a barbearia.";
+                }
+                else if (dto.Status == "Cancelled")
+                {
+                    msg = $"Olá {customer.Name}! 👋\n"
+                        + $"❌ Seu agendamento na *Barbearia Espaço Vip* foi *cancelado* pelo administrador.\n\n"
+                        + $"✂️ Serviço: {service?.Name ?? "serviço"}\n"
+                        + $"🕐 Horário: {localTime:HH:mm} – {localTime:dd/MM/yyyy}\n\n"
+                        + "Se tiver dúvidas, entre em contato com a barbearia.";
+                }
+                else if (dto.Status == "Done")
+                {
+                    msg = $"Olá {customer.Name}! 👋\n"
+                        + $"✅ Seu atendimento na *Barbearia Espaço Vip* foi *concluído*!\n\n"
+                        + $"✂️ Serviço: {service?.Name ?? "serviço"}\n"
+                        + $"🕐 Horário: {localTime:HH:mm} – {localTime:dd/MM/yyyy}\n\n"
+                        + "Agradecemos pela preferência! Se quiser, deixe sua avaliação.";
+                }
                 var waHttp = httpFactory.CreateClient("whatsapp");
                 _ = WhatsAppSender.SendAsync(waHttp, waToken, waInstance, customer.Phone, msg);
             }

@@ -100,6 +100,18 @@ export default function MyAppointment() {
               </span>
             </div>
 
+            {/* Mensagens de status especiais */}
+            {appt.status === 'Completed' && (
+              <div className="info-msg" style={{ background: '#e0ffe0', color: '#1a7f37', border: '1px solid #b6e7b6', padding: '10px 16px', borderRadius: 8, marginBottom: 8 }}>
+                Seu atendimento foi <b>concluído</b> pelo barbeiro. Obrigado por escolher a Espaço Vip!
+              </div>
+            )}
+            {appt.status === 'Cancelled' && (
+              <div className="info-msg" style={{ background: '#fff0f0', color: '#b91c1c', border: '1px solid #f5bcbc', padding: '10px 16px', borderRadius: 8, marginBottom: 8 }}>
+                Este agendamento foi <b>cancelado</b> pelo barbeiro. Em caso de dúvida, entre em contato com a barbearia.
+              </div>
+            )}
+
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <tbody>
                 {[
