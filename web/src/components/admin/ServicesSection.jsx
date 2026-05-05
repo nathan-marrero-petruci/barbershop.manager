@@ -8,6 +8,7 @@ export default function ServicesSection() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", duration: 30, price: 0, category: "both" });
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
 
   async function load() {
@@ -34,7 +35,9 @@ export default function ServicesSection() {
 
   async function saveEdit() {
     const payload = { name: editing.name.trim(), duration: Number(editing.duration), price: Number(editing.price), category: editing.category };
+    setSaving(true);
     const res = await apiFetch(`/admin/services/${editing.id}`, { method: "PUT", body: JSON.stringify(payload) });
+    setSaving(false);
     if (!res) return;
     if (!res.ok) { toast.error(await res.text()); return; }
     setEditing(null);
@@ -73,8 +76,8 @@ export default function ServicesSection() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        <button onClick={saveEdit}>Salvar</button>
-                        <button onClick={() => setEditing(null)}>Cancelar</button>
+                        <button onClick={saveEdit} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+                        <button onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
                       </div>
                     </td>
                   </>

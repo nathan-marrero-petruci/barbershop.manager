@@ -7,6 +7,7 @@ export default function BarbersSection({ barbers, onChanged }) {
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
 
   async function reload() {
@@ -30,7 +31,9 @@ export default function BarbersSection({ barbers, onChanged }) {
   async function saveEdit() {
     const name = editing.name.trim();
     if (!name) return;
+    setSaving(true);
     const res = await apiFetch(`/admin/barbers/${editing.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+    setSaving(false);
     if (!res) return;
     if (!res.ok) { toast.error(await res.text()); return; }
     setEditing(null);
@@ -64,8 +67,8 @@ export default function BarbersSection({ barbers, onChanged }) {
                   <div className="row-actions">
                     {editing?.id === b.id ? (
                       <>
-                        <button onClick={saveEdit}>Salvar</button>
-                        <button onClick={() => setEditing(null)}>Cancelar</button>
+                        <button onClick={saveEdit} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+                        <button onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
                       </>
                     ) : (
                       <>

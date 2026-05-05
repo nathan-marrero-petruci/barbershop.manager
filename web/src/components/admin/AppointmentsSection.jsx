@@ -17,6 +17,7 @@ export default function AppointmentsSection() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
   const [loading, setLoading]       = useState(false);
+  const [changingId, setChangingId] = useState(null);
 
   const [dateFilter, setDateFilter]     = useState('today');
   const [customDate, setCustomDate]     = useState('');
@@ -69,7 +70,9 @@ export default function AppointmentsSection() {
   function setStatusFilterAndReset(v) { setStatusFilter(v); setPage(1); }
 
   async function changeStatus(id, status) {
+    setChangingId(id);
     const res = await apiFetch(`/admin/appointments/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+    setChangingId(null);
     if (!res) return;
     if (!res.ok) { toast.error(await res.text()); return; }
     await load(page);
@@ -158,17 +161,17 @@ export default function AppointmentsSection() {
                 {(a.status === 'Pending' || a.status === 'Confirmed') && (
                   <div className="appt-card-actions">
                     {a.status === 'Pending' && (
-                      <button className="btn-primary" style={{ fontSize: '0.82rem', padding: '6px 14px' }} onClick={() => changeStatus(a.id, 'Confirmed')}>
-                        ✓ PIX Recebido
+                      <button className="btn-primary" style={{ fontSize: '0.82rem', padding: '6px 14px' }} disabled={changingId === a.id} onClick={() => changeStatus(a.id, 'Confirmed')}>
+                        {changingId === a.id ? '...' : '✓ PIX Recebido'}
                       </button>
                     )}
                     {a.status === 'Confirmed' && (
-                      <button className="btn-primary" style={{ fontSize: '0.82rem', padding: '6px 14px' }} onClick={() => changeStatus(a.id, 'Done')}>
-                        ✓ Concluir
+                      <button className="btn-primary" style={{ fontSize: '0.82rem', padding: '6px 14px' }} disabled={changingId === a.id} onClick={() => changeStatus(a.id, 'Done')}>
+                        {changingId === a.id ? '...' : '✓ Concluir'}
                       </button>
                     )}
-                    <button className="btn-danger" style={{ fontSize: '0.82rem', padding: '6px 14px' }} onClick={() => changeStatus(a.id, 'Cancelled')}>
-                      ✗ Cancelar
+                    <button className="btn-danger" style={{ fontSize: '0.82rem', padding: '6px 14px' }} disabled={changingId === a.id} onClick={() => changeStatus(a.id, 'Cancelled')}>
+                      {changingId === a.id ? '...' : '✗ Cancelar'}
                     </button>
                   </div>
                 )}
