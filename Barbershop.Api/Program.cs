@@ -246,7 +246,8 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
     try
     {
         var conflict = await db.Appointments.AnyAsync(a =>
-            a.BarberId == dto.BarberId && a.Start < endUtc && a.End > startUtc);
+            a.BarberId == dto.BarberId && a.Start < endUtc && a.End > startUtc
+            && a.Status != "Cancelled" && a.Status != "Done");
 
         if (conflict) return Results.Conflict(new { error = "SlotTaken", message = "Horário ocupado." });
 
@@ -435,7 +436,8 @@ app.MapGet("/barbers/{barberId}/availability", async (int barberId, string date,
     var dayStartUtc = dayStartLocal.ToUniversalTime();
     var dayEndUtc = dayEndLocal.ToUniversalTime();
     var appointments = await db.Appointments
-        .Where(a => a.BarberId == barberId && a.Start < dayEndUtc && a.End > dayStartUtc)
+        .Where(a => a.BarberId == barberId && a.Start < dayEndUtc && a.End > dayStartUtc
+                 && a.Status != "Cancelled" && a.Status != "Done")
         .ToListAsync();
 
     var slots = new List<string>();
