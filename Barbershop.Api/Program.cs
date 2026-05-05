@@ -348,8 +348,8 @@ app.MapGet("/meu-agendamento", async (int id, string phone, AppDbContext db) =>
     return Results.Ok(new
     {
         appt.Id,
-        appt.Start,
-        appt.End,
+        Start = DateTime.SpecifyKind(appt.Start, DateTimeKind.Utc),
+        End   = DateTime.SpecifyKind(appt.End,   DateTimeKind.Utc),
         appt.Status,
         ServiceName = service?.Name ?? "",
         BarberName  = barber?.Name ?? "",

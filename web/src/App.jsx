@@ -9,6 +9,7 @@ import { API } from './api/client.js'
 
 function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -16,6 +17,7 @@ function App() {
     fetch(`${API}/admin/me`, { credentials: 'include' })
       .then(r => { if (r.ok) setIsAdminAuthenticated(true) })
       .catch(() => {})
+      .finally(() => setAuthChecked(true))
   }, [])
 
   const handleLoginSuccess = () => { setIsAdminAuthenticated(true); navigate('/admin/barbers') }
@@ -60,9 +62,13 @@ function App() {
           <Route path="/admin" element={<Navigate to="/admin/barbers" replace />} />
           <Route
             path="/admin/:tab"
-            element={isAdminAuthenticated
-              ? <AdminPanel />
-              : <AdminLogin onSuccess={handleLoginSuccess} />}
+            element={
+              !authChecked
+                ? <div className="loading-msg" style={{ padding: 60, textAlign: 'center' }}>Verificando autenticação...</div>
+                : isAdminAuthenticated
+                  ? <AdminPanel />
+                  : <AdminLogin onSuccess={handleLoginSuccess} />
+            }
           />
         </Routes>
       </main>

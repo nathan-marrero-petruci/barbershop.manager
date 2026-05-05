@@ -1,12 +1,16 @@
 // Funções utilitárias para formatação de datas/horários no fuso horário de São Paulo
 
+// Normaliza ISO string para UTC: adiciona 'Z' se não houver indicador de fuso
+function toUtcIso(iso) {
+  if (!iso) return iso;
+  // Já tem 'Z' ou offset (+HH:mm / -HH:mm)
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(iso)) return iso;
+  return iso + 'Z';
+}
+
 export function formatDateTimeBR(iso) {
   if (!iso) return '';
-  // Força UTC se não tiver 'Z' ou offset
-  let safeIso = iso;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(iso)) {
-    safeIso = iso + 'Z';
-  }
+  let safeIso = toUtcIso(iso);
   const d = new Date(safeIso);
   return d.toLocaleString('pt-BR', {
     day: '2-digit',
@@ -20,10 +24,7 @@ export function formatDateTimeBR(iso) {
 
 export function formatDateBR(iso) {
   if (!iso) return '';
-  let safeIso = iso;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(iso)) {
-    safeIso = iso + 'Z';
-  }
+  let safeIso = toUtcIso(iso);
   const d = new Date(safeIso);
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -35,10 +36,7 @@ export function formatDateBR(iso) {
 
 export function formatTimeBR(iso) {
   if (!iso) return '';
-  let safeIso = iso;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(iso)) {
-    safeIso = iso + 'Z';
-  }
+  let safeIso = toUtcIso(iso);
   const d = new Date(safeIso);
   return d.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
