@@ -234,6 +234,11 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
 
     var pixKey          = (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "pix_key"))?.Value ?? "";
     var pixBeneficiario = (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "pix_beneficiario"))?.Value ?? "";
+    // Fetch WA credentials before transaction to avoid rollback-after-commit bug
+    var waToken    = Environment.GetEnvironmentVariable("WHATSAPP_API_TOKEN")
+                   ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_api_token"))?.Value ?? "";
+    var waInstance = Environment.GetEnvironmentVariable("WHATSAPP_INSTANCE")
+                   ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_instance"))?.Value ?? "";
 
     var addons = dto.AddonIds.Count > 0
         ? await db.ServiceAddons.Where(a => dto.AddonIds.Contains(a.Id)).ToListAsync()
@@ -242,6 +247,9 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
     int totalDuration = service.Duration + addons.Sum(a => a.ExtraMinutes);
     var endUtc = startUtc.AddMinutes(totalDuration);
 
+    Appointment appt;
+    Customer customer;
+
     await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
     try
     {
@@ -249,9 +257,13 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
             a.BarberId == dto.BarberId && a.Start < endUtc && a.End > startUtc
             && a.Status != "Cancelled" && a.Status != "Done");
 
-        if (conflict) return Results.Conflict(new { error = "SlotTaken", message = "Horário ocupado." });
+        if (conflict)
+        {
+            await tx.RollbackAsync();
+            return Results.Conflict(new { error = "SlotTaken", message = "Horário ocupado." });
+        }
 
-        var customer = await db.Customers.FirstOrDefaultAsync(c => c.Email == dto.CustomerEmail);
+        customer = await db.Customers.FirstOrDefaultAsync(c => c.Email == dto.CustomerEmail);
         if (customer == null)
         {
             customer = new Customer { Name = dto.CustomerName, Email = dto.CustomerEmail, Phone = dto.CustomerPhone };
@@ -264,7 +276,7 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
         }
         await db.SaveChangesAsync();
 
-        var appt = new Appointment
+        appt = new Appointment
         {
             BarberId = dto.BarberId,
             ServiceId = dto.ServiceId,
@@ -282,44 +294,41 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
         if (addons.Count > 0) await db.SaveChangesAsync();
 
         await tx.CommitAsync();
-
-        var totalPrice = service.Price + addons.Sum(a => a.Price);
-
-        // Send WhatsApp confirmation (fire-and-forget, don't fail booking if WA fails)
-        var waToken    = Environment.GetEnvironmentVariable("WHATSAPP_API_TOKEN")
-                       ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_api_token"))?.Value ?? "";
-        var waInstance = Environment.GetEnvironmentVariable("WHATSAPP_INSTANCE")
-                       ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_instance"))?.Value ?? "";
-        if (!string.IsNullOrWhiteSpace(waToken) && !string.IsNullOrWhiteSpace(waInstance))
-        {
-            var frontendUrl = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") ?? "http://localhost:5173";
-            var portalLink  = $"{frontendUrl}/meu-agendamento?id={appt.Id}&phone={Uri.EscapeDataString(dto.CustomerPhone)}";
-            var localTime  = appt.Start.ToLocalTime();
-            var confirmMsg = $"Ol\u00e1 {customer.Name}! \u2702\ufe0f\n"
-                           + $"Seu agendamento na *Barbearia Espa\u00e7o Vip* foi *criado* com sucesso!\n\n"
-                           + $"\u2702\ufe0f Servi\u00e7o: {service.Name}\n"
-                           + $"\ud83d\udd50 Hor\u00e1rio: {localTime:HH:mm} \u2013 {localTime:dd/MM/yyyy}\n\n"
-                           + $"\ud83d\udcb3 Total: R$ {totalPrice:F2}\n"
-                           + (string.IsNullOrWhiteSpace(pixKey) ? "" : $"\ud83d\udd11 Chave PIX: {pixKey}\n\n")
-                           + "*Pr\u00f3ximo passo:* realize o pagamento via PIX. O barbeiro ir\u00e1 confirmar o recebimento e seu agendamento ser\u00e1 oficialmente confirmado.\n\n"
-                           + $"\ud83d\udd17 Consulte ou cancele seu agendamento: {portalLink}\n\n"
-                           + "Em caso de d\u00favidas, entre em contato com a barbearia.";
-            var waHttp = httpFactory.CreateClient("whatsapp");
-            _ = WhatsAppSender.SendAsync(waHttp, waToken, waInstance, dto.CustomerPhone, confirmMsg);
-        }
-
-        return Results.Created($"/appointments/{appt.Id}", new {
-            appt.Id, appt.Start, appt.Status,
-            TotalPrice = totalPrice,
-            PixKey = pixKey,
-            PixBeneficiario = pixBeneficiario
-        });
     }
     catch
     {
         await tx.RollbackAsync();
         throw;
     }
+
+    // Post-commit: outside try/catch so a failure here doesn't attempt rollback on committed tx
+    var totalPrice = service.Price + addons.Sum(a => a.Price);
+
+    // Send WhatsApp confirmation (fire-and-forget, don't fail booking if WA fails)
+    if (!string.IsNullOrWhiteSpace(waToken) && !string.IsNullOrWhiteSpace(waInstance))
+    {
+        var frontendUrl = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") ?? "http://localhost:5173";
+        var portalLink  = $"{frontendUrl}/meu-agendamento?id={appt.Id}&phone={Uri.EscapeDataString(dto.CustomerPhone)}";
+        var localTime  = appt.Start.ToLocalTime();
+        var confirmMsg = $"Ol\u00e1 {customer.Name}! \u2702\ufe0f\n"
+                       + $"Seu agendamento na *Barbearia Espa\u00e7o Vip* foi *criado* com sucesso!\n\n"
+                       + $"\u2702\ufe0f Servi\u00e7o: {service.Name}\n"
+                       + $"\ud83d\udd50 Hor\u00e1rio: {localTime:HH:mm} \u2013 {localTime:dd/MM/yyyy}\n\n"
+                       + $"\ud83d\udcb3 Total: R$ {totalPrice:F2}\n"
+                       + (string.IsNullOrWhiteSpace(pixKey) ? "" : $"\ud83d\udd11 Chave PIX: {pixKey}\n\n")
+                       + "*Pr\u00f3ximo passo:* realize o pagamento via PIX. O barbeiro ir\u00e1 confirmar o recebimento e seu agendamento ser\u00e1 oficialmente confirmado.\n\n"
+                       + $"\ud83d\udd17 Consulte ou cancele seu agendamento: {portalLink}\n\n"
+                       + "Em caso de d\u00favidas, entre em contato com a barbearia.";
+        var waHttp = httpFactory.CreateClient("whatsapp");
+        _ = WhatsAppSender.SendAsync(waHttp, waToken, waInstance, dto.CustomerPhone, confirmMsg);
+    }
+
+    return Results.Created($"/appointments/{appt.Id}", new {
+        appt.Id, appt.Start, appt.Status,
+        TotalPrice = totalPrice,
+        PixKey = pixKey,
+        PixBeneficiario = pixBeneficiario
+    });
 }).RequireRateLimiting("booking");
 
 // ── Portal do cliente ─────────────────────────────────────────────────────────
@@ -1180,7 +1189,8 @@ public class AppDbContext : DbContext
     {
         modelBuilder.Entity<Appointment>()
             .HasIndex(a => new { a.BarberId, a.Start })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"Status\" NOT IN ('Cancelled', 'Done')");
 
         modelBuilder.Entity<AppointmentAddon>()
             .HasKey(aa => new { aa.AppointmentId, aa.ServiceAddonId });
