@@ -1,35 +1,23 @@
 import './App.css'
-import { useEffect, useState } from 'react'
-import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import BookingForm from './components/BookingForm.jsx'
 import AdminLogin from './components/AdminLogin.jsx'
 import AdminPanel from './components/AdminPanel.jsx'
 import MyAppointment from './components/MyAppointment.jsx'
-import { API } from './api/client.js'
+import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
-function App() {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    fetch(`${API}/admin/me`, { credentials: 'include' })
-      .then(r => { if (r.ok) setIsAdminAuthenticated(true) })
-      .catch(() => {})
-      .finally(() => setAuthChecked(true))
-  }, [])
-
-  const handleLoginSuccess = () => { setIsAdminAuthenticated(true); navigate('/admin/barbers') }
-  const handleLogout = async () => {
-    await fetch(`${API}/admin/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
-    setIsAdminAuthenticated(false)
-    navigate('/')
-  }
-
+function AppRoutes() {
+  const { isAdminAuthenticated, authChecked, handleLoginSuccess, handleLogout } = useAuth()
   const navCls = ({ isActive }) => `nav-tab${isActive ? ' active' : ''}`
 
-  const isMyAppointmentPage = location.pathname.startsWith('/meu-agendamento')
+  if (!authChecked) {
+    return (
+      <div className="loading-msg" style={{ padding: 60, textAlign: 'center' }}>
+        Verificando autenticação...
+      </div>
+    )
+  }
+
   return (
     <>
       <header className="app-header">
@@ -42,17 +30,15 @@ function App() {
             <span className="app-brand-sub">Barbearia</span>
           </div>
         </div>
-        {!isMyAppointmentPage && (
-          <nav className="app-nav">
-            <NavLink to="/" className={navCls} end>Agendar</NavLink>
-            {isAdminAuthenticated && (
-              <>
-                <NavLink to="/admin" className={navCls}>Admin</NavLink>
-                <button className="btn-danger" onClick={handleLogout}>Sair</button>
-              </>
-            )}
-          </nav>
-        )}
+        <nav className="app-nav">
+          <NavLink to="/" className={navCls} end>Agendar</NavLink>
+          {isAdminAuthenticated && (
+            <>
+              <NavLink to="/admin" className={navCls}>Admin</NavLink>
+              <button className="btn-danger" onClick={handleLogout}>Sair</button>
+            </>
+          )}
+        </nav>
       </header>
 
       <main className="app-content">
@@ -63,16 +49,22 @@ function App() {
           <Route
             path="/admin/:tab"
             element={
-              !authChecked
-                ? <div className="loading-msg" style={{ padding: 60, textAlign: 'center' }}>Verificando autenticação...</div>
-                : isAdminAuthenticated
-                  ? <AdminPanel />
-                  : <AdminLogin onSuccess={handleLoginSuccess} />
+              isAdminAuthenticated
+                ? <AdminPanel />
+                : <AdminLogin onSuccess={handleLoginSuccess} />
             }
           />
         </Routes>
       </main>
     </>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   )
 }
 
