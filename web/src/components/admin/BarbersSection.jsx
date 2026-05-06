@@ -9,6 +9,7 @@ export default function BarbersSection({ barbers, onChanged }) {
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [activating, setActivating] = useState(null);
 
   async function reload() {
     setLoading(true);
@@ -44,8 +45,21 @@ export default function BarbersSection({ barbers, onChanged }) {
     if (!(await confirmToast("Apagar barbeiro?"))) return;
     const res = await apiFetch(`/admin/barbers/${id}`, { method: "DELETE" });
     if (!res) return;
+    if (res.status === 200) {
+      const d = await res.json().catch(() => ({}));
+      if (d.softDeleted) { toast("Barbeiro inativado (possui agendamentos vinculados)."); await reload(); return; }
+    }
     if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.message || "Erro ao apagar"); return; }
     toast.success("Barbeiro removido.");
+    await reload();
+  }
+
+  async function activate(id) {
+    setActivating(id);
+    const res = await apiFetch(`/admin/barbers/${id}/activate`, { method: "PATCH" });
+    setActivating(null);
+    if (!res || !res.ok) { toast.error("Erro ao reativar barbeiro"); return; }
+    toast.success("Barbeiro reativado.");
     await reload();
   }
 
@@ -54,18 +68,23 @@ export default function BarbersSection({ barbers, onChanged }) {
       <h3 className="admin-section-title">Barbeiros</h3>
       {loading ? <p className="loading-msg">Carregando...</p> : (
         <table>
-          <thead><tr><th>Nome</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
           <tbody>
             {barbers.map(b => (
-              <tr key={b.id}>
+              <tr key={b.id} style={b.isActive === false ? { opacity: 0.5 } : {}}>
                 <td>
                   {editing?.id === b.id
                     ? <input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} />
                     : b.name}
                 </td>
+                <td>{b.isActive === false ? <span style={{ color: "#999" }}>Inativo</span> : "Ativo"}</td>
                 <td>
                   <div className="row-actions">
-                    {editing?.id === b.id ? (
+                    {b.isActive === false ? (
+                      <button onClick={() => activate(b.id)} disabled={activating === b.id}>
+                        {activating === b.id ? "Reativando..." : "Reativar"}
+                      </button>
+                    ) : editing?.id === b.id ? (
                       <>
                         <button onClick={saveEdit} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
                         <button onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>

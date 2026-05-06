@@ -194,7 +194,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.ToListAsync());
+app.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.Where(b => b.IsActive).ToListAsync());
 app.MapGet("/services", async (AppDbContext db) => await db.Services.OrderBy(s => s.Category).ThenBy(s => s.Name).ToListAsync());
 app.MapGet("/addons", async (string? category, AppDbContext db) =>
 {
@@ -564,10 +564,24 @@ admin.MapDelete("/barbers/{id}", async (int id, AppDbContext db) =>
     var e = await db.Barbers.FindAsync(id);
     if (e == null) return Results.NotFound();
     var hasAppts = await db.Appointments.AnyAsync(a => a.BarberId == id);
-    if (hasAppts) return Results.Conflict(new { error = "HasAppointments", message = "Não é possível apagar barbeiro com agendamentos." });
+    if (hasAppts)
+    {
+        e.IsActive = false;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { softDeleted = true, message = "Barbeiro inativado pois possui agendamentos vinculados." });
+    }
     db.Barbers.Remove(e);
     await db.SaveChangesAsync();
     return Results.NoContent();
+});
+
+admin.MapPatch("/barbers/{id}/activate", async (int id, AppDbContext db) =>
+{
+    var e = await db.Barbers.FindAsync(id);
+    if (e == null) return Results.NotFound();
+    e.IsActive = true;
+    await db.SaveChangesAsync();
+    return Results.Ok(e);
 });
 
 /* ---------------- Services CRUD ---------------- */
@@ -967,7 +981,7 @@ admin.MapDelete("/users/{id}", async (int id, AppDbContext db, HttpContext ctx) 
 
 app.Run();
 
-public class Barber { public int Id { get; set; } public string Name { get; set; } = string.Empty; }
+public class Barber { public int Id { get; set; } public string Name { get; set; } = string.Empty; public bool IsActive { get; set; } = true; }
 public class Service { public int Id { get; set; } public string Name { get; set; } = string.Empty; public int Duration { get; set; } public decimal Price { get; set; } public string Category { get; set; } = "both"; }
 public class ServiceAddon { public int Id { get; set; } public string Name { get; set; } = string.Empty; public decimal Price { get; set; } public bool IsHairCompatible { get; set; } = true; public bool IsBeardCompatible { get; set; } = true; public int ExtraMinutes { get; set; } = 0; }
 public class AppointmentAddon { public int AppointmentId { get; set; } public int ServiceAddonId { get; set; } public ServiceAddon ServiceAddon { get; set; } = null!; }
