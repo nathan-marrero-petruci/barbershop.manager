@@ -194,6 +194,55 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// ── Webhook UltraMsg ─────────────────────────────────────────────────────────
+// Recebe mensagens recebidas no número da barbearia e responde com o link de agendamento.
+app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttpClientFactory httpFactory, ILogger<Program> logger) =>
+{
+    // UltraMsg envia form-urlencoded
+    var form = await req.ReadFormAsync();
+
+    var eventType = form["event_type"].ToString();   // "message_received" ou "message_create"
+    var from      = form["from"].ToString();          // número do remetente (ex: "5511999999999@c.us")
+    var body      = form["body"].ToString();          // texto da mensagem
+    var fromMe    = form["from_me"].ToString();       // "true" se foi o próprio bot que enviou
+
+    // Ignorar mensagens enviadas pelo próprio número (evita loop)
+    if (fromMe == "true" || eventType != "message_received")
+        return Results.Ok();
+
+    // Ignorar grupos (contêm @g.us)
+    if (from.Contains("@g.us"))
+        return Results.Ok();
+
+    var waToken    = Environment.GetEnvironmentVariable("WHATSAPP_API_TOKEN")
+                   ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_api_token"))?.Value ?? "";
+    var waInstance = Environment.GetEnvironmentVariable("WHATSAPP_INSTANCE")
+                   ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_instance"))?.Value ?? "";
+
+    if (string.IsNullOrWhiteSpace(waToken) || string.IsNullOrWhiteSpace(waInstance))
+        return Results.Ok();
+
+    var frontendUrl = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") ?? "http://localhost:5173";
+    var bookingLink = frontendUrl;
+
+    var msg = $"Olá! 👋\n"
+            + $"Para agendar seu horário na *Barbearia Espaço Vip*, acesse o link abaixo:\n\n"
+            + $"🔗 {bookingLink}\n\n"
+            + "É rápido e fácil! Escolha o serviço, o barbeiro e o horário que preferir. 😊";
+
+    try
+    {
+        var http = httpFactory.CreateClient("whatsapp");
+        await WhatsAppSender.SendAsync(http, waToken, waInstance, from, msg);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Falha ao responder webhook WhatsApp para {From}", from);
+    }
+
+    return Results.Ok();
+}).RequireRateLimiting("global");
+
 app.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.Where(b => b.IsActive).ToListAsync());
 app.MapGet("/services", async (AppDbContext db) => await db.Services.OrderBy(s => s.Category).ThenBy(s => s.Name).ToListAsync());
 app.MapGet("/addons", async (string? category, AppDbContext db) =>
