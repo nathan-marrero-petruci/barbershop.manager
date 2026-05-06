@@ -15,5 +15,17 @@ export async function apiFetch(path, options = {}) {
     window.location.reload();
     return null;
   }
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After');
+    const seconds = retryAfter ? ` Tente novamente em ${retryAfter} segundos.` : '';
+    throw new RateLimitError(`Muitas tentativas. Aguarde um momento e tente novamente.${seconds}`);
+  }
   return res;
+}
+
+export class RateLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'RateLimitError';
+  }
 }

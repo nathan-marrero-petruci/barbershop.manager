@@ -105,6 +105,10 @@ export default function BookingForm({ onBooked }) {
         const addonParam = selectedAddons.length ? `&addonIds=${selectedAddons.join(',')}` : '';
         const slotsRes = await fetch(`${API}/barbers/${form.barberId}/availability?date=${form.date}&serviceId=${form.serviceId}${addonParam}`);
         if (slotsRes.ok) setSlots(await slotsRes.json());
+      } else if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const seconds = retryAfter ? ` Tente novamente em ${retryAfter} segundos.` : '';
+        toast.error(`Muitas tentativas. Aguarde um momento e tente novamente.${seconds}`);
       } else if (res.status === 400) {
         const body = ct.includes('application/json') ? await res.json() : await res.text();
         if (body.errors && Array.isArray(body.errors)) toast.error(body.errors.join('\n'));

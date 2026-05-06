@@ -21,7 +21,13 @@ export default function AdminLogin({ onSuccess }) {
         body: JSON.stringify({ username: user, password })
       });
       if (!res.ok) {
-        setError(res.status === 401 || res.status === 403 ? "Credenciais inválidas" : "Erro ao conectar com o servidor");
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('Retry-After');
+          const seconds = retryAfter ? ` Tente novamente em ${retryAfter} segundos.` : '';
+          setError(`Muitas tentativas. Aguarde um momento e tente novamente.${seconds}`);
+        } else {
+          setError(res.status === 401 || res.status === 403 ? "Credenciais inválidas" : "Erro ao conectar com o servidor");
+        }
         setPassword("");
         return;
       }
