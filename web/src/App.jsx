@@ -1,13 +1,12 @@
 import './App.css'
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import BookingForm from './components/BookingForm.jsx'
-import AdminLogin from './components/AdminLogin.jsx'
-import AdminPanel from './components/AdminPanel.jsx'
 import MyAppointment from './components/MyAppointment.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
 function AppRoutes() {
-  const { isAdminAuthenticated, authChecked, handleLoginSuccess, handleLogout } = useAuth()
+  const { isAdminAuthenticated, authChecked, handleLogout } = useAuth()
   const navCls = ({ isActive }) => `nav-tab${isActive ? ' active' : ''}`
 
   if (!authChecked) {
@@ -46,14 +45,7 @@ function AppRoutes() {
           <Route path="/" element={<div className="client-layout"><BookingForm /></div>} />
           <Route path="/meu-agendamento" element={<MyAppointment />} />
           <Route path="/admin" element={<Navigate to="/admin/barbers" replace />} />
-          <Route
-            path="/admin/:tab"
-            element={
-              isAdminAuthenticated
-                ? <AdminPanel />
-                : <AdminLogin onSuccess={handleLoginSuccess} />
-            }
-          />
+          <Route path="/admin/:tab" element={<ProtectedRoute />} />
         </Routes>
       </main>
     </>
