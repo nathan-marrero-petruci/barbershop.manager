@@ -4,7 +4,7 @@ import BookingForm from './components/BookingForm.jsx'
 import MyAppointment from './components/MyAppointment.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import NotFound from './components/NotFound.jsx'
-import { MainLayout, BlankLayout } from './components/layouts.jsx'
+import { MainLayout, AdminLayout, BlankLayout } from './components/layouts.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
 function AppRoutes() {
@@ -22,9 +22,11 @@ function AppRoutes() {
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<div className="client-layout"><BookingForm /></div>} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+      <Route element={<AdminLayout />}>
         <Route path="/admin" element={<Navigate to="/admin/barbers" replace />} />
         <Route path="/admin/:tab" element={<ProtectedRoute />} />
-        <Route path="*" element={<NotFound />} />
       </Route>
       <Route element={<BlankLayout />}>
         <Route path="/meu-agendamento" element={<MyAppointment />} />
