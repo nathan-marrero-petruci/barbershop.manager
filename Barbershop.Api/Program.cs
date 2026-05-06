@@ -981,7 +981,7 @@ admin.MapDelete("/users/{id}", async (int id, AppDbContext db, HttpContext ctx) 
 
 app.Run();
 
-public class Barber { public int Id { get; set; } public string Name { get; set; } = string.Empty; public bool IsActive { get; set; } = true; }
+public class Barber { public int Id { get; set; } [Required][StringLength(100)] public string Name { get; set; } = string.Empty; public bool IsActive { get; set; } = true; }
 public class Service { public int Id { get; set; } public string Name { get; set; } = string.Empty; public int Duration { get; set; } public decimal Price { get; set; } public string Category { get; set; } = "both"; }
 public class ServiceAddon { public int Id { get; set; } public string Name { get; set; } = string.Empty; public decimal Price { get; set; } public bool IsHairCompatible { get; set; } = true; public bool IsBeardCompatible { get; set; } = true; public int ExtraMinutes { get; set; } = 0; }
 public class AppointmentAddon { public int AppointmentId { get; set; } public int ServiceAddonId { get; set; } public ServiceAddon ServiceAddon { get; set; } = null!; }
