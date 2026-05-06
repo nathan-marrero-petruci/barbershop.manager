@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
   const handleLogout = async () => {
     await fetch(`${API}/admin/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
     setIsAdminAuthenticated(false)
-    navigate('/')
+    navigate('/admin/barbers')
   }
 
   return (
