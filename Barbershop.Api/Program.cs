@@ -241,7 +241,7 @@ app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttp
     }
 
     return Results.Ok();
-}).RequireRateLimiting("global");
+}).RequireRateLimiting("booking");
 
 app.MapGet("/barbers", async (AppDbContext db) => await db.Barbers.Where(b => b.IsActive).ToListAsync());
 app.MapGet("/services", async (AppDbContext db) => await db.Services.OrderBy(s => s.Category).ThenBy(s => s.Name).ToListAsync());
