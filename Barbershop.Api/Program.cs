@@ -198,13 +198,26 @@ using (var scope = app.Services.CreateScope())
 // Recebe mensagens recebidas no número da barbearia e responde com o link de agendamento.
 app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttpClientFactory httpFactory, ILogger<Program> logger) =>
 {
-    // UltraMsg envia form-urlencoded
-    var form = await req.ReadFormAsync();
+    // UltraMsg pode enviar form-urlencoded ou application/json dependendo da versão
+    string eventType, from, body, fromMe;
 
-    var eventType = form["event_type"].ToString();   // "message_received" ou "message_create"
-    var from      = form["from"].ToString();          // número do remetente (ex: "5511999999999@c.us")
-    var body      = form["body"].ToString();          // texto da mensagem
-    var fromMe    = form["from_me"].ToString();       // "true" se foi o próprio bot que enviou
+    var contentType = req.ContentType ?? "";
+    if (contentType.Contains("application/json"))
+    {
+        var json = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body);
+        eventType = json.TryGetProperty("event_type", out var et) ? et.GetString() ?? "" : "";
+        from      = json.TryGetProperty("from",       out var fr) ? fr.GetString() ?? "" : "";
+        body      = json.TryGetProperty("body",       out var bo) ? bo.GetString() ?? "" : "";
+        fromMe    = json.TryGetProperty("from_me",    out var fm) ? fm.GetString() ?? "" : "";
+    }
+    else
+    {
+        var form = await req.ReadFormAsync();
+        eventType = form["event_type"].ToString();
+        from      = form["from"].ToString();
+        body      = form["body"].ToString();
+        fromMe    = form["from_me"].ToString();
+    }
 
     // Ignorar mensagens enviadas pelo próprio número (evita loop)
     if (fromMe == "true" || eventType != "message_received")
