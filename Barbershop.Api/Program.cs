@@ -214,6 +214,18 @@ app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttp
     if (from.Contains("@g.us"))
         return Results.Ok();
 
+    // Whitelist: se WEBHOOK_ALLOWED_NUMBERS estiver definida, só responde para esses números.
+    // Formato: números separados por vírgula, sem @c.us (ex: "5511999999999,5511888888888")
+    // Se a variável não estiver definida ou estiver vazia, responde para todos (modo produção).
+    var allowedNumbers = Environment.GetEnvironmentVariable("WEBHOOK_ALLOWED_NUMBERS") ?? "";
+    if (!string.IsNullOrWhiteSpace(allowedNumbers))
+    {
+        var fromNumber = from.Replace("@c.us", "").Trim();
+        var allowed = allowedNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (!allowed.Contains(fromNumber))
+            return Results.Ok();
+    }
+
     var waToken    = Environment.GetEnvironmentVariable("WHATSAPP_API_TOKEN")
                    ?? (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == "whatsapp_api_token"))?.Value ?? "";
     var waInstance = Environment.GetEnvironmentVariable("WHATSAPP_INSTANCE")
