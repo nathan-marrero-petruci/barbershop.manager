@@ -1315,7 +1315,9 @@ public class WhatsAppReminderService : BackgroundService
         {
             try { await CheckAndSendReminders(); }
             catch (Exception ex) { _logger.LogError(ex, "WhatsApp reminder job failed"); }
-            await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
+
+            try { await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken); }
+            catch (OperationCanceledException) { break; }
         }
     }
 
