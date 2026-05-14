@@ -199,17 +199,24 @@ using (var scope = app.Services.CreateScope())
 app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttpClientFactory httpFactory, ILogger<Program> logger) =>
 {
     // UltraMsg envia application/json
+    // Estrutura: { "event_type": "...", "instanceId": "...", "data": { "from": "...", "fromMe": false, ... } }
     var json = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body);
     var eventType = json.TryGetProperty("event_type", out var et) ? et.GetString() ?? "" : "";
-    var from      = json.TryGetProperty("from",       out var fr) ? fr.GetString() ?? "" : "";
-    var fromMe    = json.TryGetProperty("from_me",    out var fm) ? fm.GetString() ?? "" : "";
+    var data      = json.TryGetProperty("data", out var d) ? d : json; // fallback para raiz se não houver "data"
+    var from      = data.TryGetProperty("from",   out var fr) ? fr.GetString() ?? "" : "";
+    // fromMe pode ser bool ou string dependendo da versão da API
+    var fromMeBool = false;
+    if (data.TryGetProperty("fromMe", out var fm))
+        fromMeBool = fm.ValueKind == JsonValueKind.True || (fm.ValueKind == JsonValueKind.String && fm.GetString() == "true");
 
-    logger.LogInformation("Webhook recebido: event={Event} from={From} fromMe={FromMe}", eventType, from, fromMe);
+    logger.LogInformation("Webhook recebido: event={Event} from={From} fromMe={FromMe} dataKeys={DataKeys}",
+        eventType, from, fromMeBool,
+        string.Join(",", json.EnumerateObject().Select(p => p.Name)));
 
     // Ignorar mensagens enviadas pelo próprio número (evita loop)
-    if (fromMe == "true" || eventType != "message_received")
+    if (fromMeBool || eventType != "message_received")
     {
-        logger.LogInformation("Webhook ignorado: fromMe={FromMe} eventType={Event}", fromMe, eventType);
+        logger.LogInformation("Webhook ignorado: fromMe={FromMe} eventType={Event}", fromMeBool, eventType);
         return Results.Ok();
     }
 
