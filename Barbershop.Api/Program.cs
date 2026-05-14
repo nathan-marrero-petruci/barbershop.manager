@@ -204,9 +204,14 @@ app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttp
     var from      = json.TryGetProperty("from",       out var fr) ? fr.GetString() ?? "" : "";
     var fromMe    = json.TryGetProperty("from_me",    out var fm) ? fm.GetString() ?? "" : "";
 
+    logger.LogInformation("Webhook recebido: event={Event} from={From} fromMe={FromMe}", eventType, from, fromMe);
+
     // Ignorar mensagens enviadas pelo próprio número (evita loop)
     if (fromMe == "true" || eventType != "message_received")
+    {
+        logger.LogInformation("Webhook ignorado: fromMe={FromMe} eventType={Event}", fromMe, eventType);
         return Results.Ok();
+    }
 
     // Ignorar grupos (contêm @g.us)
     if (from.Contains("@g.us"))
