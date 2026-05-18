@@ -405,9 +405,6 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
 
 // ── Portal do cliente ─────────────────────────────────────────────────────────
 
-static string NormalizePhone(string phone) =>
-    new string(phone.Where(char.IsDigit).ToArray());
-
 app.MapGet("/meu-agendamento", async (string token, AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(token))
