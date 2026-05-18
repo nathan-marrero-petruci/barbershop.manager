@@ -14,8 +14,7 @@ const STATUS_LABEL = {
 
 export default function MyAppointment() {
   const [params] = useSearchParams()
-  const id    = params.get('id')
-  const phone = params.get('phone')
+  const token = params.get('token')
 
   const [appt, setAppt]       = useState(null)
   const [loading, setLoading] = useState(false)
@@ -24,10 +23,10 @@ export default function MyAppointment() {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    if (!id || !phone) return
+    if (!token) return
     setLoading(true)
     setError(null)
-    fetch(`${API}/meu-agendamento?id=${encodeURIComponent(id)}&phone=${encodeURIComponent(phone)}`)
+    fetch(`${API}/meu-agendamento?token=${encodeURIComponent(token)}`)
       .then(async r => {
         if (!r.ok) throw new Error(r.status === 404 ? 'Agendamento não encontrado.' : 'Erro ao buscar agendamento.')
         return r.json()
@@ -35,12 +34,12 @@ export default function MyAppointment() {
       .then(data => setAppt(data))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [id, phone])
+  }, [token])
 
   async function cancelAppointment() {
     setCancelling(true)
     try {
-      const r = await fetch(`${API}/meu-agendamento/${id}?phone=${encodeURIComponent(phone)}`, { method: 'DELETE' })
+      const r = await fetch(`${API}/meu-agendamento/${encodeURIComponent(token)}`, { method: 'DELETE' })
       if (!r.ok) {
         const body = await r.json().catch(() => ({}))
         throw new Error(body.message ?? 'Erro ao cancelar agendamento.')
@@ -58,7 +57,7 @@ export default function MyAppointment() {
   const status = appt ? (STATUS_LABEL[appt.status] ?? { label: appt.status, color: '#6b7280' }) : null
   const canCancel = appt && (appt.status === 'Pending' || appt.status === 'Confirmed')
 
-  if (!id || !phone) {
+  if (!token) {
     return (
       <div className="client-layout">
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>

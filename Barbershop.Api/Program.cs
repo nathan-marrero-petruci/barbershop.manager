@@ -354,7 +354,8 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
             CustomerId = customer.Id,
             Start = startUtc,
             End = endUtc,
-            Status = "Pending"
+            Status = "Pending",
+            AccessToken = Guid.NewGuid().ToString("N")
         };
 
         db.Appointments.Add(appt);
@@ -379,7 +380,7 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
     if (!string.IsNullOrWhiteSpace(waToken) && !string.IsNullOrWhiteSpace(waInstance))
     {
         var frontendUrl = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") ?? "http://localhost:5173";
-        var portalLink  = $"{frontendUrl}/meu-agendamento?id={appt.Id}&phone={Uri.EscapeDataString(dto.CustomerPhone)}";
+        var portalLink  = $"{frontendUrl}/meu-agendamento?token={appt.AccessToken}";
         var localTime  = appt.Start.ToLocalTime();
         var confirmMsg = $"Ol\u00e1 {customer.Name}! \u2702\ufe0f\n"
                        + $"Seu agendamento na *Barbearia Espa\u00e7o Vip* foi *criado* com sucesso!\n\n"
@@ -407,24 +408,20 @@ app.MapPost("/appointments", async (AppointmentDto dto, AppDbContext db, IHttpCl
 static string NormalizePhone(string phone) =>
     new string(phone.Where(char.IsDigit).ToArray());
 
-app.MapGet("/meu-agendamento", async (int id, string phone, AppDbContext db) =>
+app.MapGet("/meu-agendamento", async (string token, AppDbContext db) =>
 {
-    var normalized = NormalizePhone(phone);
-    if (string.IsNullOrEmpty(normalized))
-        return Results.BadRequest("Telefone inválido.");
+    if (string.IsNullOrWhiteSpace(token))
+        return Results.BadRequest("Token inválido.");
 
     var appt = await db.Appointments
         .Include(a => a.Addons).ThenInclude(aa => aa.ServiceAddon)
-        .FirstOrDefaultAsync(a => a.Id == id);
+        .FirstOrDefaultAsync(a => a.AccessToken == token);
 
     if (appt == null) return Results.NotFound();
 
     var customer = await db.Customers.FindAsync(appt.CustomerId);
-    if (customer == null || NormalizePhone(customer.Phone) != normalized)
-        return Results.NotFound();
-
-    var service = await db.Services.FindAsync(appt.ServiceId);
-    var barber  = await db.Barbers.FindAsync(appt.BarberId);
+    var service  = await db.Services.FindAsync(appt.ServiceId);
+    var barber   = await db.Barbers.FindAsync(appt.BarberId);
 
     return Results.Ok(new
     {
@@ -432,25 +429,20 @@ app.MapGet("/meu-agendamento", async (int id, string phone, AppDbContext db) =>
         Start = DateTime.SpecifyKind(appt.Start, DateTimeKind.Utc),
         End   = DateTime.SpecifyKind(appt.End,   DateTimeKind.Utc),
         appt.Status,
-        ServiceName = service?.Name ?? "",
-        BarberName  = barber?.Name ?? "",
-        CustomerName = customer.Name,
+        ServiceName  = service?.Name ?? "",
+        BarberName   = barber?.Name ?? "",
+        CustomerName = customer?.Name ?? "",
         Addons = appt.Addons.Select(aa => aa.ServiceAddon.Name).ToList()
     });
 });
 
-app.MapDelete("/meu-agendamento/{id}", async (int id, string phone, AppDbContext db) =>
+app.MapDelete("/meu-agendamento/{token}", async (string token, AppDbContext db) =>
 {
-    var normalized = NormalizePhone(phone);
-    if (string.IsNullOrEmpty(normalized))
-        return Results.BadRequest("Telefone inválido.");
+    if (string.IsNullOrWhiteSpace(token))
+        return Results.BadRequest("Token inválido.");
 
-    var appt = await db.Appointments.FindAsync(id);
+    var appt = await db.Appointments.FirstOrDefaultAsync(a => a.AccessToken == token);
     if (appt == null) return Results.NotFound();
-
-    var customer = await db.Customers.FindAsync(appt.CustomerId);
-    if (customer == null || NormalizePhone(customer.Phone) != normalized)
-        return Results.NotFound();
 
     if (appt.Status == "Cancelled")
         return Results.BadRequest("Agendamento já cancelado.");
@@ -1089,7 +1081,7 @@ public class ServiceAddonDto
 }
 
 public class Customer { public int Id { get; set; } public string Name { get; set; } = string.Empty; public string Email { get; set; } = string.Empty; public string Phone { get; set; } = string.Empty; }
-public class Appointment { public int Id { get; set; } public int BarberId { get; set; } public int ServiceId { get; set; } public int CustomerId { get; set; } public DateTime Start { get; set; } public DateTime End { get; set; } public string Status { get; set; } = string.Empty; public bool ReminderSent { get; set; } = false; public ICollection<AppointmentAddon> Addons { get; set; } = new List<AppointmentAddon>(); }
+public class Appointment { public int Id { get; set; } public int BarberId { get; set; } public int ServiceId { get; set; } public int CustomerId { get; set; } public DateTime Start { get; set; } public DateTime End { get; set; } public string Status { get; set; } = string.Empty; public bool ReminderSent { get; set; } = false; public string AccessToken { get; set; } = string.Empty; public ICollection<AppointmentAddon> Addons { get; set; } = new List<AppointmentAddon>(); }
 
 public class WorkingHour
 {
@@ -1371,7 +1363,7 @@ public class WhatsAppReminderService : BackgroundService
             var serviceName = servicesMap.GetValueOrDefault(appt.ServiceId) ?? "servi\u00e7o";
             var localTime   = appt.Start.ToLocalTime();
             var frontendUrl = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN") ?? "http://localhost:5173";
-            var portalLink  = $"{frontendUrl}/meu-agendamento?id={appt.Id}&phone={Uri.EscapeDataString(customer.Phone)}";
+            var portalLink  = $"{frontendUrl}/meu-agendamento?token={appt.AccessToken}";
             var msg = $"Ol\u00e1 {customer.Name}! \ud83d\udc4b\n"
                     + $"Lembrando do seu agendamento na *Barbearia Espa\u00e7o Vip* daqui a {hoursBefore}h.\n\n"
                     + $"\u2702\ufe0f Servi\u00e7o: {serviceName}\n"
