@@ -224,12 +224,12 @@ app.MapPost("/webhooks/whatsapp", async (HttpRequest req, AppDbContext db, IHttp
     if (from.Contains("@g.us"))
         return Results.Ok();
 
-    // Whitelist: se WEBHOOK_ALLOWED_NUMBERS estiver definida, só responde para esses números.
-    // Formato: números separados por vírgula, sem @c.us (ex: "5511999999999,5511888888888")
-    // Se a variável não estiver definida ou estiver vazia, responde para todos (modo produção).
-    var allowedNumbers = Environment.GetEnvironmentVariable("WEBHOOK_ALLOWED_NUMBERS") ?? "";
-    if (!string.IsNullOrWhiteSpace(allowedNumbers))
+    // Whitelist: ativada apenas quando WEBHOOK_WHITELIST_ENABLED=true.
+    // Números permitidos em WEBHOOK_ALLOWED_NUMBERS separados por vírgula, sem @c.us.
+    var whitelistEnabled = (Environment.GetEnvironmentVariable("WEBHOOK_WHITELIST_ENABLED") ?? "").Equals("true", StringComparison.OrdinalIgnoreCase);
+    if (whitelistEnabled)
     {
+        var allowedNumbers = Environment.GetEnvironmentVariable("WEBHOOK_ALLOWED_NUMBERS") ?? "";
         var fromNumber = from.Replace("@c.us", "").Trim();
         var allowed = allowedNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (!allowed.Contains(fromNumber))
